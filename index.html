@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChatBot UI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .chat-container {
+      max-width: 600px;
+      margin: 50px auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+    }
+
+    .chat-header {
+      padding: 15px;
+      background: linear-gradient(135deg, #5a69f2, #42c0fb);
+      color: white;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 10px 15px;
+      margin-bottom: 12px;
+      border-radius: 20px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .user-message {
+      background-color: #e2f0ff;
+      align-self: flex-end;
+    }
+
+    .bot-message {
+      background-color: #f1f1f1;
+      align-self: flex-start;
+    }
+
+    .chat-input {
+      display: flex;
+      padding: 15px;
+      border-top: 1px solid #ddd;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #ccc;
+      border-radius: 25px;
+      margin-right: 10px;
+    }
+
+    .btn-send {
+      background-color: #5a69f2;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 10px 20px;
+    }
+
+    .btn-send:hover {
+      background-color: #4b57db;
+    }
+  </style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">🤖 WSP ChatBot</div>
+  <div class="chat-messages" id="chatBox"></div>
+  <div class="chat-input">
+    <input type="text" id="userInput" class="form-control" placeholder="Type your question..." />
+    <button class="btn btn-send" onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  const chatBox = document.getElementById('chatBox');
+
+  async function sendMessage() {
+    const inputField = document.getElementById('userInput');
+    const input = inputField.value.trim();
+    if (!input) return;
+
+    // Append user message
+    appendMessage(input, 'user-message');
+    inputField.value = '';
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // Append loading bubble
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'message bot-message';
+    loadingMsg.innerText = 'Thinking...';
+    chatBox.appendChild(loadingMsg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer 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",  // 🔐 Replace with server-side route or secure backend
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-3.5-turbo",
+          messages: [{ role: 'user', content: input }],
+        }),
+      });
+
+      const data = await response.json();
+      const markdownText = data.choices?.[0]?.message?.content || 'No response received.';
+      chatBox.removeChild(loadingMsg);
+      appendMessage(marked.parse(markdownText), 'bot-message', true);
+    } catch (error) {
+      chatBox.removeChild(loadingMsg);
+      appendMessage("⚠️ Error: " + error.message, 'bot-message');
+    }
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function appendMessage(text, className, isHTML = false) {
+    const msg = document.createElement('div');
+    msg.className = `message ${className}`;
+    if (isHTML) {
+      msg.innerHTML = text;
+    } else {
+      msg.textContent = text;
+    }
+    chatBox.appendChild(msg);
+  }
+
+  document.getElementById('userInput').addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      sendMessage();
+    }
+  });
+</script>
+
+</body>
+</html>
